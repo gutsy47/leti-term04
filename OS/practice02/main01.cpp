@@ -1,0 +1,74 @@
+// Вариант 2, программа 1 - без средств синхронизации
+
+#include <iostream>
+#include <unistd.h>
+#include <pthread.h>
+#include <cstring>
+
+
+/// Thread parameters
+struct TArgs {
+    unsigned short id = 0;        // Thread ID
+    int status = 1;               // 1 if thread is active else 0
+    char msg = 'a';               // This char will be printed
+    unsigned short msgCount = 10; // Count of times the char will be printed
+};
+
+
+/// Thread routine template
+static void *startRoutine(void *args) {
+    auto *arg = (TArgs *) args;
+
+    std::cout << "\nПоток #" << arg->id << " начал свою работу (msg='" << arg->msg << "')\n";
+    while (arg->status) {
+        // Critical section
+        for (int i = 0; i < arg->msgCount; ++i) {
+            putchar(arg->msg);
+            fflush(stdout);
+            sleep(1);
+        }
+
+        // "Job" outside the section
+        sleep(1);
+    }
+    std::cout << "\nПоток #" << arg->id << " завершил свою работу (msg='" << arg->msg << "')\n";
+
+    // Return value = 15 + arg->id
+    int *ret = new int(15 + arg->id);
+    pthread_exit(ret);
+}
+
+
+int main() {
+    // Initialization
+    setlocale(LC_ALL, "ru_RU.UTF-8");
+    std::cout << "Программа начала работу\n";
+
+    // Create two POSIX Threads
+    pthread_t thread1, thread2;
+    TArgs arg1 = {1, 1, '1', 10};
+    TArgs arg2 = {2, 1, '2', 10};
+    pthread_create(&thread1, nullptr, startRoutine, &arg1);
+    pthread_create(&thread2, nullptr, startRoutine, &arg2);
+
+    // Wait for getchar()
+    std::cout << "Нажмите <ENTER> для завершения работы...\n";
+    getchar();
+    arg1.status = 0;
+    arg2.status = 0;
+    std::cout << "Клавиша нажата. Ожидание завершения работы потоков...\n";
+
+    // Wait for the threads to finish. Complete the program
+    int *ret1, *ret2;
+    int res1 = pthread_join(thread1, (void **) &ret1);
+    int res2 = pthread_join(thread2, (void **) &ret2);
+    std::cout << "Поток #1 завершился с кодом выхода: " << res1 << ", вернув: " << (ret1 ? *ret1 : 0) << std::endl;
+    if (res1 != 0) std::cerr << strerror(res2);
+    std::cout << "Поток #2 завершился с кодом выхода: " << res2 << ", вернув: " << (ret2 ? *ret2 : 0) << std::endl;
+    if (res2 != 0) std::cerr << strerror(res2);
+    delete ret1;
+    delete ret2;
+
+    std::cout << "Программа завершила работу\n";
+    return 0;
+}
