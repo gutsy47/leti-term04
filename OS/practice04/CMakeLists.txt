@@ -3,4 +3,4 @@ project(OS-P04)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(OS-P04 main.cpp)
+add_executable(OS-P04 prog2.cpp)

@@ -1,2 +1,3 @@
 #!/bin/bash
-g++ -o main main.cpp -lpthread
+g++ -o prog1 prog1.cpp -lpthread
+g++ -o prog2 prog2.cpp -lpthread
