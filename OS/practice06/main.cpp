@@ -28,8 +28,12 @@ void *shm;             // Local shared memory pointer
 /// Custom SIGINT handler
 void handleSignal(int sig) {
     std::cout << "\nInterrupt signal: " << sig << "\n";
+    sem_close(semRead);
+    sem_close(semWrite);
     sem_unlink(SEM_READ_NAME);
     sem_unlink(SEM_WRITE_NAME);
+    shmdt(shm);
+    shmctl(shmId, IPC_RMID, nullptr);
     exit(0);
 }
 
@@ -40,7 +44,7 @@ static void *writeRoutine(void *args) {
 
     // Fetch data and format message
     std::cout << "Поток записи открывает файл описаний файловых систем\n";
-    FILE *fp = setmntent("/etc/fstab", "r");
+    FILE *fp = setmntent("/proc/mounts", "r");
     if (!fp) {
         perror("setmntent");
         *status = false;
@@ -53,9 +57,9 @@ static void *writeRoutine(void *args) {
     while (*status) {
         // Fetch data into the message and "send" it to the reader by copying into the shared memory
         fs = getmntent(fp);
-        if (fs) snprintf(data, sizeof(data), "device: %s, dir: %s", fs->mnt_fsname, fs->mnt_dir);
-        else    snprintf(data, sizeof(data), "End of mntent");
-        std::cout << data << std::endl;
+        if (fs) snprintf(data, sizeof(data), "name: %s\tdir: %s\ttype: %s", fs->mnt_fsname, fs->mnt_dir, fs->mnt_type);
+        else    snprintf(data, sizeof(data), "EOF: No more data in /proc/mounts");
+        std::cout << "WRITE " << data << std::endl;
         memcpy(shm, data, sizeof(data));
 
         // Release write semaphore. Wait for read
@@ -83,7 +87,7 @@ static void *readRoutine(void *args) {
         sem_post(semRead); // Release read semaphore
 
         // Process data
-        std::cout << data << std::endl;
+        std::cout << "READ " << data << std::endl;
     }
     std::cout << "Поток чтения завершил свою работу\n";
 
@@ -123,8 +127,8 @@ int main() {
     std::cout << "Разделяемая память успешно присоединена\n";
 
     // Semaphores
-    semWrite = sem_open(SEM_WRITE_NAME, O_CREAT, 0664, 1);
-    semRead  = sem_open(SEM_READ_NAME, O_CREAT, 0664, 1);
+    semWrite = sem_open(SEM_WRITE_NAME, O_CREAT, 0664, 0);
+    semRead  = sem_open(SEM_READ_NAME, O_CREAT, 0664, 0);
     if (semWrite == SEM_FAILED || semRead == SEM_FAILED) {
         perror("sem_open");
         if (semWrite == SEM_FAILED) {
