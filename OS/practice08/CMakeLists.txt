@@ -3,4 +3,4 @@ project(OS-P08)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(OS-P08 main.cpp)
+add_executable(OS-P08 server.cpp client.cpp)

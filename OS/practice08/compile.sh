@@ -1,2 +1,3 @@
 #!/bin/bash
-g++ -o main main.cpp
+g++ -o server server.cpp -lpthread
+g++ -o client client.cpp -lpthread
